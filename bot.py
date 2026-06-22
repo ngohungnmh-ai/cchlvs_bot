@@ -37,7 +37,7 @@ from telegram.ext import (
 from config import (
     TELEGRAM_BOT_TOKEN,
     ANTHROPIC_API_KEY,
-    ADMIN_USER_ID,
+    ADMIN_USER_IDS,
     ALLOWED_CHAT_ID,
     ALLOWED_TOPIC_ID,
     CLAUDE_MODEL,
@@ -63,7 +63,7 @@ anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 def is_admin(update: Update) -> bool:
     user = update.effective_user
-    return user is not None and user.id == ADMIN_USER_ID
+    return user is not None and user.id in ADMIN_USER_IDS
 
 
 def is_allowed_chat(update: Update) -> bool:
