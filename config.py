@@ -21,6 +21,11 @@ ADMIN_USER_ID = int(os.environ["ADMIN_USER_ID"])
 _allowed = os.environ.get("ALLOWED_CHAT_ID", "").strip()
 ALLOWED_CHAT_ID = int(_allowed) if _allowed else None
 
+# (Tùy chọn) Chỉ nhận ảnh & nhận lệnh trong đúng 1 topic (chủ đề) của group.
+# Để trống = nhận ở mọi topic. Điền ID topic để khóa đúng luồng.
+_topic = os.environ.get("ALLOWED_TOPIC_ID", "").strip()
+ALLOWED_TOPIC_ID = int(_topic) if _topic else None
+
 # Model dùng để chấm ảnh. Haiku rẻ & nhanh, hợp việc chấm ảnh số lượng nhiều.
 # Muốn chấm "khó tính"/chi tiết hơn thì đổi sang "claude-sonnet-4-6".
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
