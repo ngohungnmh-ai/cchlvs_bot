@@ -39,6 +39,7 @@ from config import (
     ANTHROPIC_API_KEY,
     ADMIN_USER_ID,
     ALLOWED_CHAT_ID,
+    ALLOWED_TOPIC_ID,
     CLAUDE_MODEL,
     MAX_PHOTOS_PER_PERSON,
 )
@@ -72,11 +73,21 @@ def is_allowed_chat(update: Update) -> bool:
     return update.effective_chat is not None and update.effective_chat.id == ALLOWED_CHAT_ID
 
 
+def is_allowed_topic(update: Update) -> bool:
+    # Nếu không cấu hình ALLOWED_TOPIC_ID thì cho phép mọi topic.
+    if ALLOWED_TOPIC_ID is None:
+        return True
+    msg = update.effective_message
+    return msg is not None and msg.message_thread_id == ALLOWED_TOPIC_ID
+
+
 # ---------------------------------------------------------------------------
 # Nhận ảnh nhân viên gửi lên
 # ---------------------------------------------------------------------------
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_allowed_chat(update):
+        return
+    if not is_allowed_topic(update):
         return
 
     chat_id = update.effective_chat.id
@@ -105,11 +116,16 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def cmd_baocao(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_allowed_chat(update):
         return
+    if not is_allowed_topic(update):
+        return
     if not is_admin(update):
         await update.message.reply_text("Chỉ admin mới dùng được lệnh /baocao.")
         return
 
     chat_id = update.effective_chat.id
+    # Báo cáo luôn gửi về đúng topic nhận ảnh (ALLOWED_TOPIC_ID).
+    # Nếu không khóa topic thì gửi về đúng topic nơi gõ lệnh.
+    thread_id = ALLOWED_TOPIC_ID if ALLOWED_TOPIC_ID is not None else update.effective_message.message_thread_id
     people = pending.get(chat_id, {})
 
     # Lọc người thực sự có ảnh
@@ -118,22 +134,28 @@ async def cmd_baocao(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     }
 
     if not people_with_photos:
-        await update.message.reply_text(
-            "Chưa có ảnh nào được gửi kể từ lần báo cáo trước. "
-            "Nhân viên gửi ảnh vào group rồi gõ lại /baocao nhé."
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="Chưa có ảnh nào được gửi kể từ lần báo cáo trước. "
+                 "Nhân viên gửi ảnh vào group rồi gõ lại /baocao nhé.",
+            message_thread_id=thread_id,
         )
         return
 
-    await update.message.reply_text(
-        f"Đang chấm báo cáo cho {len(people_with_photos)} nhân viên... "
-        "Vui lòng đợi trong giây lát."
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"Đang chấm báo cáo cho {len(people_with_photos)} nhân viên... "
+             "Vui lòng đợi trong giây lát.",
+        message_thread_id=thread_id,
     )
 
     for uid, data in people_with_photos.items():
         name = data["name"]
         photos = data["photos"]
 
-        await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+        await context.bot.send_chat_action(
+            chat_id=chat_id, action=ChatAction.TYPING, message_thread_id=thread_id
+        )
         try:
             report = score_photos(name, photos)
         except Exception as e:  # noqa: BLE001
@@ -142,10 +164,14 @@ async def cmd_baocao(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
                 f"⚠️ Không chấm được báo cáo cho {name} do lỗi kỹ thuật: {e}\n"
                 "Ảnh vẫn được giữ lại, admin gõ /baocao để thử lại."
             )
-            await context.bot.send_message(chat_id=chat_id, text=report)
+            await context.bot.send_message(
+                chat_id=chat_id, text=report, message_thread_id=thread_id
+            )
             continue
 
-        await context.bot.send_message(chat_id=chat_id, text=report)
+        await context.bot.send_message(
+            chat_id=chat_id, text=report, message_thread_id=thread_id
+        )
 
     # Chấm xong -> xóa bộ ảnh tạm của group này
     pending[chat_id] = defaultdict(lambda: {"name": "", "photos": []})
@@ -156,6 +182,8 @@ async def cmd_baocao(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 # ---------------------------------------------------------------------------
 async def cmd_trangthai(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_allowed_chat(update):
+        return
+    if not is_allowed_topic(update):
         return
     if not is_admin(update):
         return
@@ -178,6 +206,8 @@ async def cmd_trangthai(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 # ---------------------------------------------------------------------------
 async def cmd_huy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_allowed_chat(update):
+        return
+    if not is_allowed_topic(update):
         return
     if not is_admin(update):
         return
