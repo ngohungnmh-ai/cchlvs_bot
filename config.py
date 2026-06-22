@@ -14,8 +14,14 @@ except ImportError:
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 
-# ID Telegram của admin (chỉ người này gõ được /baocao).
-ADMIN_USER_ID = int(os.environ["ADMIN_USER_ID"])
+# ID Telegram của admin (chỉ những người này gõ được /baocao).
+# Điền 1 hoặc nhiều ID, cách nhau bằng dấu phẩy. VD: 987654321,123456789
+_admins_raw = os.environ.get("ADMIN_USER_ID", "")
+ADMIN_USER_IDS = {
+    int(x.strip()) for x in _admins_raw.split(",") if x.strip()
+}
+if not ADMIN_USER_IDS:
+    raise RuntimeError("Chưa cấu hình ADMIN_USER_ID (cần ít nhất 1 ID).")
 
 # (Tùy chọn) Chỉ cho bot hoạt động trong 1 group cụ thể. Để trống = mọi group.
 _allowed = os.environ.get("ALLOWED_CHAT_ID", "").strip()
